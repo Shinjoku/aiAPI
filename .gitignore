@@ -104,8 +104,7 @@ venv.bak/
 /site
 
 # mypy
-<<<<<<< HEAD
 .mypy_cache/
-=======
-.mypy_cache/
->>>>>>> Sets up flask api and implements get videos
+
+#mac os files
+.DS_Store

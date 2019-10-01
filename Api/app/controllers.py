@@ -8,7 +8,6 @@ import ast
 import imp
 import os
 
-
 # Import the helpers module
 helper_module = imp.load_source('*', './app/helpers.py')
 
@@ -47,15 +46,43 @@ def getVideos():
 
 @app.route('/results', methods=['GET'])
 def getResults():
-    pass
+    try:
+        query_params = helper_module.parse_query_params(request.query_string)
+        if (query_params != ""):
+            result = userCol.find({userId: srt(query_params)})
+            return jsonify(result)
+        else:
+            return "Missing Parameter", 400
+    except:
+        return "Server Error", 500
 
 @app.route('/suspects', methods=['POST'])
 def postSuspects():
-    query_params = helper_module.parse_query_params(request.query_string)
-    if (query_params != ""):
-        return str(suspectsCol.insertOne({query_params})), 200
-    else:
-        return "Missing Parameter", 400
+    try:
+        query_params = helper_module.parse_query_params(request.query_string)
+        docSuspects = suspectsCol.findOne({})
+
+        if (query_params != ""):
+            return str(suspectsCol.update(
+                {
+                    _id: docSuspects._id
+                }, 
+                {
+                    $push: { 
+                        suspects: [
+                            {
+                                "title": str(query_params),
+                                "local": "/data/db/aiapi/suspects",
+                                "timestamp": Date.now()
+                            }
+                        ]
+                    }
+                }
+            )), 200
+        else:
+            return "Missing Parameter", 400
+    except:
+        return "Server Error", 500
 
 @app.errorhandler(404)
 def page_not_found(e):

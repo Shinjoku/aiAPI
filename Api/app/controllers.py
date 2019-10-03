@@ -1,14 +1,19 @@
 """This module will serve the api request."""
+import os, ast, imp, json, datetime
 from bson.json_util import dumps
 from config import client
 from app import app
 from flask import request, jsonify
 from datetime import date
-import json
-import ast
-import imp
-import os
 from werkzeug.utils import secure_filename
+
+
+# Allowed files extensions
+ALLOWED_EXTENSIONS = set(["mov"])
+
+# Folder locations for uploads
+SUSPECTS_UPLOAD_FOLDER = "/assets/suspects/"
+VIDEOS_UPLOAD_FOLDER = "/assets/videos/"
 
 # Import the helpers module
 helper_module = imp.load_source('*', './app/helpers.py')
@@ -19,35 +24,44 @@ db = client['api']
 usersCol = db['users']
 suspectsCol = db['suspects']
 
-# Allowed files extensions
-extensions = set(["mov"])
-
-@app.route("/", methods=['GET'])
-def default_route():
-    """
-       Function to fetch the pads.
-    """
-    try:
-        # Call the function to get the query params
-        query_params = helper_module.parse_query_params(request.query_string)
-        # Check if dictionary is not empty
-        if query_params:
-            return jsonify(query_params)
-        else:
-            return str("AH BININO")
-    except:
-        # Error while trying to fetch the resource
-        # Add message for debugging purpose
-        return "", 500
 
 @app.route('/videos', methods=['GET'])
 def getVideos():
     ar = usersCol.find({})
     return dumps(ar)
 
-# @app.route('/videos', methods=['POST'])
-# def postVideos():
-#     pass
+@app.route('/videos', methods=['POST'])
+def postVideos():
+    try:
+        query_params = helper_module.parse_query_params(request.query_string)
+
+        if (query_params != None and
+            'title' in query_params and
+            'userid' in query_params and
+            'filename' in query_params):
+
+            storedUser = usersCol.find_one({"userid": query_params['userid']})
+            
+            newVideo = {
+                "title": query_params["filename"],
+                "local": str(os.path.join(VIDEOS_UPLOAD_FOLDER, query_params['filename'])),
+                "timestamp": datetime.datetime.utcnow()
+            }
+
+            if(storedUser != None):
+                result = usersCol.update({"_id": storedUser['_id']},
+                    {"$push": {"videos": newVideo}},
+                    upsert=True)
+                
+            else:
+                result = usersCol.insert_one({"userid": query_params['userid'], "videos": newVideo})
+
+            return result, 200
+        else:
+            return "Missing Parameter", 400
+    except Exception as e:
+        print(e)
+        return "Server Error", 500
 
 @app.route('/results', methods=['GET'])
 def getResults():
@@ -65,18 +79,30 @@ def getResults():
 def postSuspects():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
-        if (query_params != ""):
+
+        if (query_params != None and
+            'filename' in query_params and
+            'file' in request.files):
+
+            file = request.files['file']
+            if(file.filename == ''):
+                return "Missing Parameter", 400
+
             storedSuspect = suspectsCol.find_one({})
             newSuspect = {
-                "title": "MUDOU O FILHO DA PUTA",
-                "local": "/bataat",
-                "timestamp": ""
+                "title": query_params["filename"],
+                "local": str(os.path.join(SUSPECTS_UPLOAD_FOLDER, query_params['filename'])),
+                "timestamp": datetime.datetime.utcnow()
             }
 
-            result = suspectsCol.update({'_id': storedSuspect['_id']},
-                {'$push': {'suspects': newSuspect}},
-                upsert=True)
-            return result.raw_result, 200
+            if(storedSuspect != None):
+                result = suspectsCol.update({"_id": storedSuspect['_id']},
+                    {"$push": {"suspects": newSuspect}},
+                    upsert=True)
+            else:
+                result = suspectsCol.insert({"suspects": newSuspect})
+            
+            return result, 200
         else:
             return "Missing Parameter", 400
     except Exception as e:

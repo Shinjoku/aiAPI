@@ -3,10 +3,12 @@ from bson.json_util import dumps
 from config import client
 from app import app
 from flask import request, jsonify
+from datetime import date
 import json
 import ast
 import imp
 import os
+from werkzeug.utils import secure_filename
 
 # Import the helpers module
 helper_module = imp.load_source('*', './app/helpers.py')
@@ -14,11 +16,14 @@ helper_module = imp.load_source('*', './app/helpers.py')
 # Select the database
 db = client['api']
 # Select the collection
-userCol = db['users']
+usersCol = db['users']
 suspectsCol = db['suspects']
 
+# Allowed files extensions
+extensions = set(["mov"])
+
 @app.route("/", methods=['GET'])
-def fetch_pads():
+def default_route():
     """
        Function to fetch the pads.
     """
@@ -37,7 +42,7 @@ def fetch_pads():
 
 @app.route('/videos', methods=['GET'])
 def getVideos():
-    ar = userCol.find({})
+    ar = usersCol.find({})
     return dumps(ar)
 
 # @app.route('/videos', methods=['POST'])
@@ -60,28 +65,22 @@ def getResults():
 def postSuspects():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
-        docSuspects = suspectsCol.findOne({})
-
         if (query_params != ""):
-            return str(suspectsCol.update(
-                {
-                    _id: docSuspects._id
-                }, 
-                {
-                    $push: { 
-                        suspects: [
-                            {
-                                "title": str(query_params),
-                                "local": "/data/db/aiapi/suspects",
-                                "timestamp": Date.now()
-                            }
-                        ]
-                    }
-                }
-            )), 200
+            storedSuspect = suspectsCol.find_one({})
+            newSuspect = {
+                "title": "MUDOU O FILHO DA PUTA",
+                "local": "/bataat",
+                "timestamp": ""
+            }
+
+            result = suspectsCol.update({'_id': storedSuspect['_id']},
+                {'$push': {'suspects': newSuspect}},
+                upsert=True)
+            return result.raw_result, 200
         else:
             return "Missing Parameter", 400
-    except:
+    except Exception as e:
+        print(e)
         return "Server Error", 500
 
 @app.errorhandler(404)

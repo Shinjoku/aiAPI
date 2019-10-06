@@ -24,6 +24,9 @@ db = client['api']
 usersCol = db['users']
 suspectsCol = db['suspects']
 
+@app.route('/', methods=['GET'])
+def mainPage():
+    return jsonify({"message": "I'm alive."})
 
 @app.route('/videos', methods=['GET'])
 def getVideos():

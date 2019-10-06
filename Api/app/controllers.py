@@ -24,14 +24,28 @@ db = client['api']
 usersCol = db['users']
 suspectsCol = db['suspects']
 
-
 @app.route('/videos', methods=['GET'])
-def getVideos():
-    ar = usersCol.find({})
-    return dumps(ar)
+def get_videos():
+    try:
+        query_params = helper_module.parse_query_params(request.query_string)
+        if (query_params != None and 'userid' in query_params):
+            userVideos = usersCol.find_one({"userid": query_params['userid']})
+            
+            if (userVideos == None):
+                result  = "User not found!"
+            else:
+                #TODO return list of videos. 
+                result = "Lista of videos"
+            
+            return jsonify(result), 200
+        else:
+            return "Missing Parameter", 400
+    except Exception as e:
+        print(e)
+        return "Server Error", 500
 
 @app.route('/videos', methods=['POST'])
-def postVideos():
+def post_videos():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
 
@@ -47,14 +61,17 @@ def postVideos():
                 "local": str(os.path.join(VIDEOS_UPLOAD_FOLDER, query_params['filename'])),
                 "timestamp": datetime.datetime.utcnow()
             }
-
-            if(storedUser != None):
-                result = usersCol.update({"_id": storedUser['_id']},
-                    {"$push": {"videos": newVideo}},
-                    upsert=True)
-                
+            saveFile = upload_file(request, "video")
+            if (saveFile == "Success"):
+                if(storedUser != None):
+                    result = usersCol.update({"_id": storedUser['_id']},
+                        {"$push": {"videos": newVideo}},
+                        upsert=True)
+                    
+                else:
+                    result = usersCol.insert_one({"userid": query_params['userid'], "videos": newVideo})
             else:
-                result = usersCol.insert_one({"userid": query_params['userid'], "videos": newVideo})
+                result = saveFile
 
             return result, 200
         else:
@@ -64,19 +81,40 @@ def postVideos():
         return "Server Error", 500
 
 @app.route('/results', methods=['GET'])
-def getResults():
+def get_results():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
-        if (query_params != ""):
-            result = userCol.find({userId: srt(query_params)})
-            return jsonify(result)
+        if (query_params != None):
+            findResults = usersCol.find_one({"userid": query_params['userid']})
+            if(findResults != None):
+                #TODO RETURN LIST OF RESULTS
+                result = findResults
+            else:
+                result = "Result not found!"
+
+            return jsonify(result), 200
         else:
             return "Missing Parameter", 400
     except:
         return "Server Error", 500
 
+@app.route('/suspects', methods=['GET'])
+def get_suspects():
+    try:
+        findSuspects = suspectsCol.find({})
+        if (findSuspects == None):
+            result =  "Suspects not found!"
+        else:
+            #TODO return list of suspects
+            result = "List of suspects"
+
+        return jsonify(result), 200
+    except Exception as e:
+        print(e)
+        return "Server Error", 500
+
 @app.route('/suspects', methods=['POST'])
-def postSuspects():
+def post_suspects():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
 
@@ -95,12 +133,16 @@ def postSuspects():
                 "timestamp": datetime.datetime.utcnow()
             }
 
-            if(storedSuspect != None):
-                result = suspectsCol.update({"_id": storedSuspect['_id']},
-                    {"$push": {"suspects": newSuspect}},
-                    upsert=True)
-            else:
-                result = suspectsCol.insert({"suspects": newSuspect})
+            saveFile = upload_file(request, "image")
+            if (saveFile == "Sucess"):
+                if(storedSuspect != None):
+                    result = suspectsCol.update({"_id": storedSuspect['_id']},
+                        {"$push": {"suspects": newSuspect}},
+                        upsert=True)
+                else:
+                    result = suspectsCol.insert({"suspects": newSuspect})
+            else: 
+                result = saveFile
             
             return result, 200
         else:
@@ -125,3 +167,24 @@ def page_not_found(e):
     resp.status_code = 404
     # Returning the object
     return resp
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def upload_file(request, type):
+    try:
+        if 'file' not in request.files:
+            return ('no file part.')
+        file = request.files['file']
+        if file  and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            if type == "video":
+                file.save(os.path.join(VIDEOS_UPLOAD_FOLDER, filename))
+            else:
+                file.save(os.path.join(SUSPECTS_UPLOAD_FOLDER, filename))
+            return 'Success'
+        else:
+            return 'Extension not allowed'
+    except Exception as e:
+        return e
+        

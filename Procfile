@@ -1,1 +1,1 @@
-web: python3 Api/run-app.py
+web: python Api/run-app.py

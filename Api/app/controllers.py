@@ -16,7 +16,7 @@ SUSPECTS_UPLOAD_FOLDER = "/assets/suspects/"
 VIDEOS_UPLOAD_FOLDER = "/assets/videos/"
 
 # Import the helpers module
-helper_module = imp.load_source('*', './app/helpers.py')
+helper_module = imp.load_source('*', './Api/app/helpers.py')
 
 # Select the database
 db = client['api']

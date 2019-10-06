@@ -7,13 +7,14 @@ from flask import request, jsonify
 from datetime import date
 from werkzeug.utils import secure_filename
 
+currentDir = os.getcwd()
 
 # Allowed files extensions
-ALLOWED_EXTENSIONS = set(["mov"])
+ALLOWED_EXTENSIONS = set(["mov", "jpg", "png"])
 
 # Folder locations for uploads
-SUSPECTS_UPLOAD_FOLDER = "/assets/suspects/"
-VIDEOS_UPLOAD_FOLDER = "/assets/videos/"
+SUSPECTS_UPLOAD_FOLDER = "assets/suspects/"
+VIDEOS_UPLOAD_FOLDER = "assets/videos/"
 
 # Import the helpers module
 helper_module = imp.load_source('*', './Api/app/helpers.py')
@@ -121,7 +122,7 @@ def get_suspects():
 def post_suspects():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
-
+        print(request.files)
         if (query_params != None and
             'filename' in query_params and
             'file' in request.files):
@@ -148,7 +149,7 @@ def post_suspects():
             else: 
                 result = saveFile
             
-            return result, 200
+            return str(result), 200
         else:
             return "Missing Parameter", 400
     except Exception as e:
@@ -183,9 +184,11 @@ def upload_file(request, type):
         if file  and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             if type == "video":
-                file.save(os.path.join(VIDEOS_UPLOAD_FOLDER, filename))
+                uploadFolder = os.path.join(currentDir, VIDEOS_UPLOAD_FOLDER)
+                file.save(os.path.join(uploadFolder, filename))
             else:
-                file.save(os.path.join(SUSPECTS_UPLOAD_FOLDER, filename))
+                uploadFolder = os.path.join(currentDir, SUSPECTS_UPLOAD_FOLDER)
+                file.save(os.path.join(uploadFolder, filename))
             return 'Success'
         else:
             return 'Extension not allowed'

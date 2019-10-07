@@ -13,7 +13,7 @@ currentDir = os.getcwd()
 ALLOWED_EXTENSIONS = set(["mov", "jpg", "png"])
 
 # Folder locations for uploads
-SUSPECTS_UPLOAD_FOLDER = "assets/suspects/"
+SUSPECTS_UPLOAD_FOLDER = "assets/database/"
 VIDEOS_UPLOAD_FOLDER = "assets/videos/"
 
 # Import the helpers module
@@ -74,11 +74,13 @@ def post_videos():
                         upsert=True)
                     
                 else:
-                    result = usersCol.insert_one({"userid": query_params['userid'], "videos": newVideo})
+                    videosArr = []
+                    videosArr.append(newVideo)
+                    result = usersCol.insert_one({"userid": query_params['userid'], "videos": videosArr})
             else:
                 result = saveFile
 
-            return result, 200
+            return str(result), 200
         else:
             return "Missing Parameter", 400
     except Exception as e:
@@ -145,7 +147,9 @@ def post_suspects():
                         {"$push": {"suspects": newSuspect}},
                         upsert=True)
                 else:
-                    result = suspectsCol.insert({"suspects": newSuspect})
+                    suspectsArr = []
+                    suspectsArr.append(newSuspect)
+                    result = suspectsCol.insert({"suspects": suspectsArr})
             else: 
                 result = saveFile
             
@@ -185,10 +189,18 @@ def upload_file(request, type):
             filename = secure_filename(file.filename)
             if type == "video":
                 uploadFolder = os.path.join(currentDir, VIDEOS_UPLOAD_FOLDER)
-                file.save(os.path.join(uploadFolder, filename))
+                try:
+                    file.save(os.path.join(uploadFolder, filename))
+                except:
+                    os.mkdir(uploadFolder)
+                    file.save(os.path.join(uploadFolder, filename))
             else:
                 uploadFolder = os.path.join(currentDir, SUSPECTS_UPLOAD_FOLDER)
-                file.save(os.path.join(uploadFolder, filename))
+                try:
+                    file.save(os.path.join(uploadFolder, filename))
+                except:
+                    os.mkdir(uploadFolder)
+                    file.save(os.path.join(uploadFolder, filename))
             return 'Success'
         else:
             return 'Extension not allowed'

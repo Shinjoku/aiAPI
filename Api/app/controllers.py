@@ -3,7 +3,7 @@ import os, ast, imp, json, datetime
 from bson.json_util import dumps
 from config import client
 from app import app
-from flask import request, jsonify
+from flask import request, jsonify, send_file
 from datetime import date
 from werkzeug.utils import secure_filename
 
@@ -34,13 +34,12 @@ def get_videos():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
         if (query_params != None and 'userid' in query_params):
-            userVideos = usersCol.find_one({"userid": query_params['userid']})
+            userVideos = usersCol.distinct("results.local", {"userid": query_params['userid']})
             
             if (userVideos == None):
                 result  = "User not found!"
             else:
-                #TODO return list of videos. 
-                result = "Lista of videos"
+                return send_file(userVideos, mimetype='video/quicktime')
             
             return jsonify(result), 200
         else:
@@ -72,7 +71,6 @@ def post_videos():
                     result = usersCol.update({"_id": storedUser['_id']},
                         {"$push": {"videos": newVideo}},
                         upsert=True)
-                    
                 else:
                     videosArr = []
                     videosArr.append(newVideo)
@@ -92,10 +90,13 @@ def get_results():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
         if (query_params != None):
-            findResults = usersCol.find_one({"userid": query_params['userid']})
+            #
+            #QUERY exemplo mongo
+            #db.suspects.distinct("suspects.local", {_id: ObjectId("5d92a4bce5014c9226bcdc8e")})
+            #
+            findResults = usersCol.distinct("results.local", {"userid": query_params['userid']})
             if(findResults != None):
-                #TODO RETURN LIST OF RESULTS
-                result = findResults
+                return send_file(findResults, mimetype='image/jpg')
             else:
                 result = "Result not found!"
 
@@ -108,12 +109,11 @@ def get_results():
 @app.route('/suspects', methods=['GET'])
 def get_suspects():
     try:
-        findSuspects = suspectsCol.find({})
+        findSuspects = suspectsCol.distinct("suspects.local")
         if (findSuspects == None):
             result =  "Suspects not found!"
         else:
-            #TODO return list of suspects
-            result = "List of suspects"
+            return send_file(findSuspects, mimetype='image/jpg')
 
         return jsonify(result), 200
     except Exception as e:

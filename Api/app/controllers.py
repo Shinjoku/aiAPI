@@ -110,6 +110,10 @@ def get_results():
                 {
                     "name": "Gabriela",
                     "milisec": str(15398 + randrange(60))
+                },
+                {
+                    "name": "Breno",
+                    "milisec": str(randrange(22000, 23000))
                 }
             ]
             return jsonify(MOCKED_RESULT)

@@ -6,22 +6,9 @@ from app import app
 from flask import request, jsonify, send_file
 from datetime import date
 from werkzeug.utils import secure_filename
+from random import randrange
 
 currentDir = os.getcwd()
-MOCKED_RESULT = [
-    {
-        "name": "Eduardo",
-        "milisec": "3841"
-    },
-    {
-        "name": "Catarina",
-        "milisec": "9374"
-    },
-    {
-        "name": "Gabriela",
-        "milisec": "15398"
-    }
-]
 
 # Allowed files extensions
 ALLOWED_EXTENSIONS = set(["mov", "jpg", "png"])
@@ -103,7 +90,6 @@ def post_videos():
 def get_results():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
-        print(not query_params)
         if (not query_params):
             #
             #QUERY exemplo mongo
@@ -112,6 +98,20 @@ def get_results():
             #findResults = usersCol.distinct("results.local", {"userid": query_params['userid']})
             #if(findResults != None):
                 #return send_file(findResults, mimetype='image/jpg')
+            MOCKED_RESULT = [
+                {
+                    "name": "Eduardo",
+                    "milisec": str(3841 + randrange(60))
+                },
+                {
+                    "name": "Catarina",
+                    "milisec": str(9374 + randrange(60))
+                },
+                {
+                    "name": "Gabriela",
+                    "milisec": str(15398 + randrange(60))
+                }
+            ]
             return jsonify(MOCKED_RESULT)
             # else:
             #     result = "Result not found!"

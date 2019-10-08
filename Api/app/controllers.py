@@ -10,21 +10,16 @@ from werkzeug.utils import secure_filename
 currentDir = os.getcwd()
 MOCKED_RESULT = [
     {
-        "title": "all1.mov",
-        "result": [
-            {
-                "name": "Eduardo",
-                "milisec": "3841"
-            },
-            {
-                "name": "Catarina",
-                "milisec": "9374"
-            },
-            {
-                "name": "Gabriela",
-                "milisec": "15398"
-            }
-        ]
+        "name": "Eduardo",
+        "milisec": "3841"
+    },
+    {
+        "name": "Catarina",
+        "milisec": "9374"
+    },
+    {
+        "name": "Gabriela",
+        "milisec": "15398"
     }
 ]
 

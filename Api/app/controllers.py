@@ -8,6 +8,25 @@ from datetime import date
 from werkzeug.utils import secure_filename
 
 currentDir = os.getcwd()
+MOCKED_RESULT = [
+    {
+        "title": "all1.mov",
+        "result": [
+            {
+                "name": "Eduardo",
+                "milisec": "3841"
+            },
+            {
+                "name": "Catarina",
+                "milisec": "9374"
+            },
+            {
+                "name": "Gabriela",
+                "milisec": "15398"
+            }
+        ]
+    }
+]
 
 # Allowed files extensions
 ALLOWED_EXTENSIONS = set(["mov", "jpg", "png"])
@@ -89,16 +108,18 @@ def post_videos():
 def get_results():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
-        if (query_params == None):
+        print(not query_params)
+        if (not query_params):
             #
             #QUERY exemplo mongo
             #db.suspects.distinct("suspects.local", {_id: ObjectId("5d92a4bce5014c9226bcdc8e")})
             #
-            findResults = usersCol.distinct("results.local", {"userid": query_params['userid']})
-            if(findResults != None):
-                return send_file(findResults, mimetype='image/jpg')
-            else:
-                result = "Result not found!"
+            #findResults = usersCol.distinct("results.local", {"userid": query_params['userid']})
+            #if(findResults != None):
+                #return send_file(findResults, mimetype='image/jpg')
+            return jsonify(MOCKED_RESULT)
+            # else:
+            #     result = "Result not found!"
 
             return jsonify(result), 200
         else:

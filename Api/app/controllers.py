@@ -89,7 +89,7 @@ def post_videos():
 def get_results():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
-        if (query_params != None):
+        if (query_params == None):
             #
             #QUERY exemplo mongo
             #db.suspects.distinct("suspects.local", {_id: ObjectId("5d92a4bce5014c9226bcdc8e")})

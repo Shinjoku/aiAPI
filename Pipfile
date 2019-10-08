@@ -10,6 +10,7 @@ Flask = "*"
 dnspython = "*"
 pymongo = "*"
 Werkzeug = "*"
+flask_cors = "*"
 
 
 [requires]

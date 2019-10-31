@@ -3,13 +3,13 @@ import os
 import numpy as np
 
 # .XML classifiers
-faceClassifier = cv2.CascadeClassifier('app\\cascades\\haarcascade_frontalface_default.xml')
-eyeClassifier = cv2.CascadeClassifier('app\\cascades\\haarcascade_eye.xml')
+faceClassifier = cv2.CascadeClassifier('..\\cascades\\haarcascade_frontalface_default.xml')
+eyeClassifier = cv2.CascadeClassifier('..\\cascades\\haarcascade_eye.xml')
 
 # Global Variables ( :/ ) 
 imageWidth, imageHeight = 220, 220
 imageCount = 1
-imagePaths = [os.path.join('assets\\suspects', f) for f in os.listdir('assets\\suspects')]
+imagePaths = [os.path.join('..\\..\\..\\assets\\suspects', f) for f in os.listdir('..\\..\\..\\assets\\suspects')]
 
 # Receive current suspect Id
 id = input('Enter the suspect identifier: ')
@@ -32,7 +32,7 @@ for path in imagePaths:
         # if there were detected eyes, save the face image
         if len(detectedEyes):
             faceImage = cv2.resize(grayImage[y:y + a, x:x + l], (imageWidth, imageHeight))
-            cv2.imwrite("assets/faces/suspect." + str(id) + "." + str(imageCount) + ".jpg", faceImage)
+            cv2.imwrite("../../../assets/faces/suspect." + str(id) + "." + str(imageCount) + ".jpg", faceImage)
             
             print("[ " + str(id) + " face " + str(imageCount) + " prepared ]")
             

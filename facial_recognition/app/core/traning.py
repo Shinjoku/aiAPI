@@ -10,7 +10,7 @@ lbph = cv2.face.LBPHFaceRecognizer_create(4,8,8,8,115)
 
 # Retrieve faces images and the culprits id
 def getImageAndId():
-    imagePaths = [os.path.join('assets\\faces', f) for f in os.listdir('assets\\faces')]
+    imagePaths = [os.path.join('..\\..\\..\\assets\\faces', f) for f in os.listdir('assets\\faces')]
     faces = []
     ids = []
 
@@ -27,8 +27,8 @@ print("Training...")
 eigenface.train(faces, ids)
 eigenface.write('EigenClassifier.yml')
 
-fisherface.train(faces, ids)
-fisherface.write('FisherClassifier.yml')
+# fisherface.train(faces, ids)
+# fisherface.write('FisherClassifier.yml')
 
 lbph.train(faces, ids)
 lbph.write('LBPHClassifier.yml')

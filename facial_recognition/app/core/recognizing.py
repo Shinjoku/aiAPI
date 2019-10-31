@@ -1,14 +1,14 @@
 import cv2
 
 # Classifier, currently using frontal image only
-faceClassifier = cv2.CascadeClassifier("app\\cascades\\haarcascade_frontalface_default.xml")
+faceClassifier = cv2.CascadeClassifier("..\\cascades\\haarcascade_frontalface_default.xml")
 
 # Reconizers, to use the other two, uncomment them and comment the ones left
 
 #recognizer = cv2.face.FisherFaceRecognizer_create()
 #recognizer.read("FisherClassifier.yml")
-#recognizer = cv2.face.EigenFaceRecognizer_create()
-#recognizer.read("EigenClassifier.yml")
+# recognizer = cv2.face.EigenFaceRecognizer_create()
+# recognizer.read("EigenClassifier.yml")
 recognizer = cv2.face.LBPHFaceRecognizer_create(radius=4, threshold= 125)
 recognizer.read("LBPHClassifier.yml")
 
@@ -17,7 +17,7 @@ suspectName = ""
 font = cv2.FONT_HERSHEY_COMPLEX_SMALL
 
 # Video input
-capturedVideo = cv2.VideoCapture('assets\\videos\\all1.mov')
+capturedVideo = cv2.VideoCapture('..\\..\\..\\assets\\videos\\all1.mov')
 
 # Error Handling
 if not capturedVideo.isOpened():

@@ -14,11 +14,11 @@ currentDir = os.getcwd()
 ALLOWED_EXTENSIONS = set(["mov", "jpg", "png"])
 
 # Folder locations for uploads
-SUSPECTS_UPLOAD_FOLDER = "assets/database/"
-VIDEOS_UPLOAD_FOLDER = "assets/videos/"
+SUSPECTS_UPLOAD_FOLDER = "..\\assets\\database1\\"
+VIDEOS_UPLOAD_FOLDER = "..\\assets\\videos1\\"
 
 # Import the helpers module
-helper_module = imp.load_source('*', './Api/app/helpers.py')
+helper_module = imp.load_source('*', './app/helpers.py')
 
 # Select the database
 db = client['api']
@@ -66,7 +66,7 @@ def post_videos():
                 "local": str(os.path.join(VIDEOS_UPLOAD_FOLDER, query_params['filename'])),
                 "timestamp": datetime.datetime.utcnow()
             }
-            saveFile = upload_file(request, "video")
+            saveFile = upload_file(request.files['file'], "video")
             if (saveFile == "Success"):
                 if(storedUser != None):
                     result = usersCol.update({"_id": storedUser['_id']},
@@ -145,30 +145,31 @@ def post_suspects():
             'filename' in query_params and
             'file' in request.files):
 
-            file = request.files['file']
-            if(file.filename == ''):
-                return "Missing Parameter", 400
+            for file in request.files.getlist('file'):
+                print(file)
+                # if(file.filename == ''):
+                #     return "Missing Parameter", 400
 
-            storedSuspect = suspectsCol.find_one({})
-            newSuspect = {
-                "title": query_params["filename"],
-                "local": str(os.path.join(SUSPECTS_UPLOAD_FOLDER, query_params['filename'])),
-                "timestamp": datetime.datetime.utcnow()
-            }
+                storedSuspect = suspectsCol.find_one({})
+                newSuspect = {
+                    "title": query_params["filename"],
+                    "local": str(os.path.join(SUSPECTS_UPLOAD_FOLDER, query_params['filename'])),
+                    "timestamp": datetime.datetime.utcnow()
+                }
 
-            saveFile = upload_file(request, "image")
-            if (saveFile == "Sucess"):
-                if(storedSuspect != None):
-                    result = suspectsCol.update({"_id": storedSuspect['_id']},
-                        {"$push": {"suspects": newSuspect}},
-                        upsert=True)
-                else:
-                    suspectsArr = []
-                    suspectsArr.append(newSuspect)
-                    result = suspectsCol.insert({"suspects": suspectsArr})
-            else: 
-                result = saveFile
-            
+                saveFile = upload_file(file, "image")
+                if (saveFile == "Sucess"):
+                    if(storedSuspect != None):
+                        result = suspectsCol.update({"_id": storedSuspect['_id']},
+                            {"$push": {"suspects": newSuspect}},
+                            upsert=True)
+                    else:
+                        suspectsArr = []
+                        suspectsArr.append(newSuspect)
+                        result = suspectsCol.insert({"suspects": suspectsArr})
+                else: 
+                    result = saveFile
+                
             return str(result), 200
         else:
             return "Missing Parameter", 400
@@ -196,12 +197,9 @@ def page_not_found(e):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def upload_file(request, type):
+def upload_file(file, type):
     try:
-        if 'file' not in request.files:
-            return ('no file part.')
-        file = request.files['file']
-        if file  and allowed_file(file.filename):
+        if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             if type == "video":
                 uploadFolder = os.path.join(currentDir, VIDEOS_UPLOAD_FOLDER)

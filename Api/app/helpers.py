@@ -6,6 +6,11 @@ sys.modules['urlparse'] = urlparse
 sys.modules['urllib'] = urlparse
 from urlparse import parse_qs
 
+# # AI methods
+# prepare = imp.load_source('*', './facial_recognition/app/core/preparing.py')
+# train = imp.load_source('*', './facial_recognition/app/core/traning.py')
+# recognize = imp.load_source('*', './facial_recognition/app/core/recognizing.py')
+
 
 def parse_query_params(query_string):
     """

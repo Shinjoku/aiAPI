@@ -7,15 +7,20 @@ from flask import request, jsonify, send_file
 from datetime import date
 from werkzeug.utils import secure_filename
 from random import randrange
+import facial_recognition.app.core.preparing as preparer
+import facial_recognition.app.core.traning as trainer
+import facial_recognition.app.core.recognizing as recognizer
 
 currentDir = os.getcwd()
+print(currentDir)
 
 # Allowed files extensions
 ALLOWED_EXTENSIONS = set(["mov", "jpg", "png"])
 
 # Folder locations for uploads
-SUSPECTS_UPLOAD_FOLDER = "..\\assets\\database1\\"
-VIDEOS_UPLOAD_FOLDER = "..\\assets\\videos1\\"
+DATABASE_UPLOAD_FOLDER = "assets\\database\\"
+SUSPECTS_UPLOAD_FOLDER = "assets\\suspects\\"
+VIDEOS_UPLOAD_FOLDER = "assets\\videos\\"
 
 # Import the helpers module
 helper_module = imp.load_source('*', './app/helpers.py')
@@ -157,12 +162,12 @@ def post_suspects():
                 storedSuspect = suspectsCol.find_one({})
                 newSuspect = {
                     "title": query_params["filename"],
-                    "local": str(os.path.join(SUSPECTS_UPLOAD_FOLDER, query_params['filename'])),
+                    "local": str(os.path.join(DATABASE_UPLOAD_FOLDER, query_params['filename'])),
                     "timestamp": datetime.datetime.utcnow()
                 }
 
                 saveFile = upload_file(file, "image")
-                if (saveFile == "Sucess"):
+                if (saveFile == "Success"):
                     if(storedSuspect != None):
                         result = suspectsCol.update({"_id": storedSuspect['_id']},
                             {"$push": {"suspects": newSuspect}},
@@ -173,7 +178,13 @@ def post_suspects():
                         result = suspectsCol.insert({"suspects": suspectsArr})
                 else: 
                     result = saveFile
-                
+            
+            # AI execution
+            preparer.prepare()
+            delete_files()
+            trainer.train()
+            recognizer.recognize()
+            
             return str(result), 200
         else:
             return "Missing Parameter", 400
@@ -213,15 +224,22 @@ def upload_file(file, type):
                     os.mkdir(uploadFolder)
                     file.save(os.path.join(uploadFolder, filename))
             else:
-                uploadFolder = os.path.join(currentDir, SUSPECTS_UPLOAD_FOLDER)
+                suspectsUploadFolder = os.path.join(currentDir, SUSPECTS_UPLOAD_FOLDER)
+                dbUploadFolder = os.path.join(currentDir, DATABASE_UPLOAD_FOLDER)
                 try:
-                    file.save(os.path.join(uploadFolder, filename))
+                    file.save(os.path.join(suspectsUploadFolder, filename))
+                    file.save(os.path.join(dbUploadFolder, filename))
                 except:
-                    os.mkdir(uploadFolder)
+                    os.mkdir(suspectsUploadFolder)
                     file.save(os.path.join(uploadFolder, filename))
+                    os.mkdir(dbUploadFolder)
+                    file.save(os.path.join(dbUploadFolder, filename))
             return 'Success'
         else:
             return 'Extension not allowed'
     except Exception as e:
         return e
         
+def delete_files():
+    for filename in os.listdir(SUSPECTS_UPLOAD_FOLDER):
+            os.remove(SUSPECTS_UPLOAD_FOLDER + filename)

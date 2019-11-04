@@ -23,15 +23,15 @@ def train():
         return np.array(ids), faces
 
     ids, faces = getImageAndId()
-    print("Training...")
+    print("TRAINER> The train has begun.")
 
     eigenface.train(faces, ids)
-    eigenface.write('EigenClassifier.yml')
+    eigenface.write('facial_recognition/EigenClassifier.yml')
 
     # fisherface.train(faces, ids)
     # fisherface.write('FisherClassifier.yml')
 
     lbph.train(faces, ids)
-    lbph.write('LBPHClassifier.yml')
+    lbph.write('facial_recognition/LBPHClassifier.yml')
 
-    print("Traning Done!")
+    print("TRAINER> Train executed successfully.")

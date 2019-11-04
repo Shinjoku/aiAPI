@@ -2,21 +2,21 @@ import cv2
 import os
 import numpy as np
 
-def prepare():
+def prepare(id):
     # .XML classifiers
-    faceClassifier = cv2.CascadeClassifier('..\\cascades\\haarcascade_frontalface_default.xml')
-    eyeClassifier = cv2.CascadeClassifier('..\\cascades\\haarcascade_eye.xml')
+
+    faceClassifier = cv2.CascadeClassifier('facial_recognition\\app\\cascades\\haarcascade_frontalface_default.xml')
+    eyeClassifier = cv2.CascadeClassifier('facial_recognition\\app\\cascades\\haarcascade_eye.xml')
 
     # Global Variables ( :/ ) 
     imageWidth, imageHeight = 220, 220
     imageCount = 1
-    print(os.getcwd())
     imagePaths = [os.path.join('assets\\suspects', f) for f in os.listdir('assets\\suspects')]
 
     # Receive current suspect Id
-    id = input('Enter the suspect identifier: ')
+    print('Suspect identifier: ', id)
 
-    print("start")
+    print("PREPARER> The preparation has begun.")
     # for each image path:
     for path in imagePaths:
         # read image, prepare it and detect faces
@@ -40,4 +40,4 @@ def prepare():
                 
                 imageCount += 1
 
-    print("end")
+    print("PREPARER> Prepare executed successfully.")

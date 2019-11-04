@@ -1,5 +1,5 @@
 """This module will serve the api request."""
-import os, ast, imp, json, datetime
+import os, ast, imp, json, datetime, sys
 from bson.json_util import dumps
 from config import client
 from app import app
@@ -10,6 +10,7 @@ from random import randrange
 import facial_recognition.app.core.preparing as preparer
 import facial_recognition.app.core.traning as trainer
 import facial_recognition.app.core.recognizing as recognizer
+import shutil as sh
 
 currentDir = os.getcwd()
 print(currentDir)
@@ -30,6 +31,7 @@ db = client['api']
 # Select the collection
 usersCol = db['users']
 suspectsCol = db['suspects']
+resultsCol = db['results']
 
 @app.route('/', methods=['GET'])
 def mainPage():
@@ -60,18 +62,28 @@ def post_videos():
         query_params = helper_module.parse_query_params(request.query_string)
 
         if (query_params != None and
-            'title' in query_params and
-            'userid' in query_params and
-            'filename' in query_params):
-
+            'userid' in query_params):
             storedUser = usersCol.find_one({"userid": query_params['userid']})
-            
+            filename = request.files['file'].filename
             newVideo = {
-                "title": query_params["filename"],
-                "local": str(os.path.join(VIDEOS_UPLOAD_FOLDER, query_params['filename'])),
+                "title": filename,
+                "local": str(os.path.join(VIDEOS_UPLOAD_FOLDER, filename)),
                 "timestamp": datetime.datetime.utcnow()
             }
+
             saveFile = upload_file(request.files['file'], "video")
+            
+            # AI execution
+            for suspectId in get_suspects_ids():
+                print(suspectId)
+                preparer.prepare(int(suspectId))
+            trainer.train()
+            recognizationResult = recognizer.recognize(filename)
+            delete_suspects()
+
+
+            newVideo["result"] = recognizationResult
+
             if (saveFile == "Success"):
                 if(storedUser != None):
                     result = usersCol.update({"_id": storedUser['_id']},
@@ -79,6 +91,8 @@ def post_videos():
                         upsert=True)
                 else:
                     videosArr = []
+
+                    # Store on DB
                     videosArr.append(newVideo)
                     result = usersCol.insert_one({"userid": query_params['userid'], "videos": videosArr})
             else:
@@ -88,47 +102,22 @@ def post_videos():
         else:
             return "Missing Parameter", 400
     except Exception as e:
-        print(e)
+        print(e, " at line ", sys.exc_info()[-1].tb_lineno)
         return "Server Error", 500
 
 @app.route('/results', methods=['GET'])
 def get_results():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
-        if (not query_params):
-            #
-            #QUERY exemplo mongo
-            #db.suspects.distinct("suspects.local", {_id: ObjectId("5d92a4bce5014c9226bcdc8e")})
-            #
-            #findResults = usersCol.distinct("results.local", {"userid": query_params['userid']})
-            #if(findResults != None):
-                #return send_file(findResults, mimetype='image/jpg')
-            MOCKED_RESULT = [
-                {
-                    "name": "Eduardo",
-                    "milisec": str(3841 + randrange(60))
-                },
-                {
-                    "name": "Catarina",
-                    "milisec": str(9374 + randrange(60))
-                },
-                {
-                    "name": "Gabriela",
-                    "milisec": str(15398 + randrange(60))
-                },
-                {
-                    "name": "Breno",
-                    "milisec": str(randrange(22000, 23000))
-                }
-            ]
-            return jsonify(MOCKED_RESULT)
-            # else:
-            #     result = "Result not found!"
+        if ('userid' in query_params):
 
-            return jsonify(result), 200
+            user = usersCol.find_one({"userid": query_params['userid']})
+            videos = user['videos']
+            return jsonify(videos), 200
         else:
             return "Missing Parameter", 400
-    except:
+    except Exception as e:
+        print(e, " at line ", sys.exc_info()[-1].tb_lineno)
         return "Server Error", 500
 
 @app.route('/suspects', methods=['GET'])
@@ -149,24 +138,20 @@ def get_suspects():
 def post_suspects():
     try:
         query_params = helper_module.parse_query_params(request.query_string)
-        print(request.files)
         if (query_params != None and
-            'filename' in query_params and
             'file' in request.files):
 
             for file in request.files.getlist('file'):
-                print(file)
-                # if(file.filename == ''):
-                #     return "Missing Parameter", 400
 
                 storedSuspect = suspectsCol.find_one({})
                 newSuspect = {
-                    "title": query_params["filename"],
-                    "local": str(os.path.join(DATABASE_UPLOAD_FOLDER, query_params['filename'])),
+                    "title": file.filename,
+                    "local": str(os.path.join(DATABASE_UPLOAD_FOLDER, file.filename)),
                     "timestamp": datetime.datetime.utcnow()
                 }
 
                 saveFile = upload_file(file, "image")
+
                 if (saveFile == "Success"):
                     if(storedSuspect != None):
                         result = suspectsCol.update({"_id": storedSuspect['_id']},
@@ -178,12 +163,6 @@ def post_suspects():
                         result = suspectsCol.insert({"suspects": suspectsArr})
                 else: 
                     result = saveFile
-            
-            # AI execution
-            preparer.prepare()
-            delete_files()
-            trainer.train()
-            recognizer.recognize()
             
             return str(result), 200
         else:
@@ -225,21 +204,26 @@ def upload_file(file, type):
                     file.save(os.path.join(uploadFolder, filename))
             else:
                 suspectsUploadFolder = os.path.join(currentDir, SUSPECTS_UPLOAD_FOLDER)
-                dbUploadFolder = os.path.join(currentDir, DATABASE_UPLOAD_FOLDER)
                 try:
                     file.save(os.path.join(suspectsUploadFolder, filename))
-                    file.save(os.path.join(dbUploadFolder, filename))
                 except:
                     os.mkdir(suspectsUploadFolder)
                     file.save(os.path.join(uploadFolder, filename))
-                    os.mkdir(dbUploadFolder)
-                    file.save(os.path.join(dbUploadFolder, filename))
             return 'Success'
         else:
             return 'Extension not allowed'
     except Exception as e:
         return e
+
+def get_suspects_ids():
+    result = []
+    for imgName in os.listdir(SUSPECTS_UPLOAD_FOLDER):
+        suspectId = imgName.split('.')[1]
+        if(suspectId not in result):
+            result.append(suspectId)
+    return result
         
-def delete_files():
+def delete_suspects():
     for filename in os.listdir(SUSPECTS_UPLOAD_FOLDER):
+            sh.copy(SUSPECTS_UPLOAD_FOLDER + filename, DATABASE_UPLOAD_FOLDER + filename)
             os.remove(SUSPECTS_UPLOAD_FOLDER + filename)

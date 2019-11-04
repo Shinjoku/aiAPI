@@ -1,8 +1,15 @@
 import cv2
+import time
+import math
 
-def recognize():
+def recognize(filename):
+
+    videosBaseUrl = 'assets\\videos\\'
+    suspects = {}
+
+    print('RECOGNIZER> The recognition has begun.')
     # Classifier, currently using frontal image only
-    faceClassifier = cv2.CascadeClassifier("..\\cascades\\haarcascade_frontalface_default.xml")
+    faceClassifier = cv2.CascadeClassifier("facial_recognition\\app\\cascades\\haarcascade_frontalface_default.xml")
 
     # Reconizers, to use the other two, uncomment them and comment the ones left
 
@@ -11,19 +18,21 @@ def recognize():
     # recognizer = cv2.face.EigenFaceRecognizer_create()
     # recognizer.read("EigenClassifier.yml")
     recognizer = cv2.face.LBPHFaceRecognizer_create(radius=4, threshold= 125)
-    recognizer.read("LBPHClassifier.yml")
+    recognizer.read("facial_recognition/LBPHClassifier.yml")
 
     imageWidth, imageHeight = 220, 220
     suspectName = ""
     font = cv2.FONT_HERSHEY_COMPLEX_SMALL
 
     # Video input
-    capturedVideo = cv2.VideoCapture('assets\\videos\\all1.mov')
+    capturedVideo = cv2.VideoCapture(videosBaseUrl + filename)
 
     # Error Handling
     if not capturedVideo.isOpened():
         print("Error opening video stream or file")
 
+    frameNumber = 0
+    initialTime = time.time()
     # Read until video is completed
     while capturedVideo.isOpened():
         # Read video frame-by-frame
@@ -41,7 +50,7 @@ def recognize():
 
             # Detect faces in frame
             detectedFaces = faceClassifier.detectMultiScale(grayFrame, scaleFactor=1.5, minSize=(30, 30))
-
+            
             for (x, y, l, a) in detectedFaces:
                 # Resize face and predict who it is
                 face = cv2.resize(grayFrame[y:y + a, x:x + l], (imageWidth, imageHeight))
@@ -64,7 +73,25 @@ def recognize():
                         suspectName = 'Matheus'
                     else:
                         suspectName = 'Gasparzinho'
-                        
+
+                    elapsedMiliseconds = math.trunc((time.time() - initialTime) * 1000)
+
+                    if(suspectName in suspects):
+                        suspect = suspects[suspectName]
+                        miliseconds = suspect['miliseconds']
+
+                        if(suspect['records'] < 3):
+                            miliseconds.append(elapsedMiliseconds)
+                            suspects[suspectName] = {
+                                "miliseconds": miliseconds,
+                                "records": suspect['records'] + 1
+                            }
+                    else:
+                        suspects[suspectName] = {
+                            "miliseconds": [elapsedMiliseconds],
+                            "records": 1
+                        }
+
                     cv2.putText(frame, suspectName, (x, y + (a + 30)), font, 2, (0, 0, 255))
                     cv2.putText(frame, str(confidence), (x, y + (a + 50)), font, 1, (0, 0, 255))
 
@@ -86,3 +113,12 @@ def recognize():
 
     # Closes all the frames
     cv2.destroyAllWindows()
+
+    videoResult = {
+        "video": filename,
+        "suspects": suspects
+    }
+
+    print('RECOGNIZER> Recognition executed successfully.')
+
+    return videoResult

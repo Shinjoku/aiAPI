@@ -1,27 +1,29 @@
 """This module will serve the api request."""
 import os, ast, imp, json, datetime, sys
 from bson.json_util import dumps
-from config import client
+from config import client, authenticated_user
 from app import app
 from flask import request, jsonify, send_file
 from datetime import date
 from werkzeug.utils import secure_filename
 from random import randrange
+import shutil as sh
+from .middlewares import login_required
 import facial_recognition.app.core.preparing as preparer
 import facial_recognition.app.core.traning as trainer
 import facial_recognition.app.core.recognizing as recognizer
-import shutil as sh
+
 
 currentDir = os.getcwd()
 print(currentDir)
 
 # Allowed files extensions
-ALLOWED_EXTENSIONS = set(["mov", "jpg", "png"])
+ALLOWED_EXTENSIONS = set(["mov", "jpg", "png", "mp4"])
 
 # Folder locations for uploads
-DATABASE_UPLOAD_FOLDER = "assets\\database\\"
-SUSPECTS_UPLOAD_FOLDER = "assets\\suspects\\"
-VIDEOS_UPLOAD_FOLDER = "assets\\videos\\"
+DATABASE_UPLOAD_FOLDER = "assets/database/"
+SUSPECTS_UPLOAD_FOLDER = "assets/suspects/"
+VIDEOS_UPLOAD_FOLDER = "assets/videos/"
 
 # Import the helpers module
 helper_module = imp.load_source('*', './app/helpers.py')
@@ -38,89 +40,81 @@ def mainPage():
     return jsonify({"message": "I'm alive."})
 
 @app.route('/videos', methods=['GET'])
+@login_required
 def get_videos():
     try:
-        query_params = helper_module.parse_query_params(request.query_string)
-        if (query_params != None and 'userid' in query_params):
-            userVideos = usersCol.distinct("results.local", {"userid": query_params['userid']})
-            
-            if (userVideos == None):
-                result  = "User not found!"
-            else:
-                return send_file(userVideos, mimetype='video/quicktime')
-            
-            return jsonify(result), 200
+        userVideos = usersCol.distinct("results.local", {"userid": authenticated_user})
+        print(authenticated_user)
+        if (userVideos == None):
+            result  = "User not found!"
         else:
-            return "Missing Parameter", 400
+            result = userVideos
+        
+        return jsonify(result), 200
+
     except Exception as e:
         print(e)
         return "Server Error", 500
 
-@app.route('/videos', methods=['POST'])
-def post_videos():
+@app.route('/video', methods=['POST'])
+# @login_required
+def post_video():
     try:
-        query_params = helper_module.parse_query_params(request.query_string)
+        storedUser = usersCol.find_one({"userid": authenticated_user})
+        print(request.files)
+        if 'file' not in request.files:
+            print('POST_VIDEO> ERROR: File not received')
+            return {'message': 'missing file'}, 400
+        
+        filename = request.files['file'].filename
+        newVideo = {
+            "title": filename,
+            "local": str(os.path.join(VIDEOS_UPLOAD_FOLDER, filename)),
+            "timestamp": datetime.datetime.utcnow()
+        }
 
-        if (query_params != None and
-            'userid' in query_params):
-            storedUser = usersCol.find_one({"userid": query_params['userid']})
-            filename = request.files['file'].filename
-            newVideo = {
-                "title": filename,
-                "local": str(os.path.join(VIDEOS_UPLOAD_FOLDER, filename)),
-                "timestamp": datetime.datetime.utcnow()
-            }
+        saveFile = upload_file(request.files['file'], "video")
+        
+        recognizationResult = recognizer.recognize(filename)
+        delete_suspects()
 
-            saveFile = upload_file(request.files['file'], "video")
-            
-            # AI execution
-            for suspectId in get_suspects_ids():
-                print(suspectId)
-                preparer.prepare(int(suspectId))
-            trainer.train()
-            recognizationResult = recognizer.recognize(filename)
-            delete_suspects()
+        newVideo["result"] = recognizationResult
 
-
-            newVideo["result"] = recognizationResult
-
-            if (saveFile == "Success"):
-                if(storedUser != None):
-                    result = usersCol.update({"_id": storedUser['_id']},
-                        {"$push": {"videos": newVideo}},
-                        upsert=True)
-                else:
-                    videosArr = []
-
-                    # Store on DB
-                    videosArr.append(newVideo)
-                    result = usersCol.insert_one({"userid": query_params['userid'], "videos": videosArr})
+        if (saveFile == "Success"):
+            if(storedUser != None):
+                usersCol.update({"_id": storedUser['_id']},
+                    {"$push": {"videos": newVideo}},
+                    upsert=True)
+                result = "Success"
             else:
-                result = saveFile
+                videosArr = []
 
-            return str(result), 200
+                # Store on DB
+                videosArr.append(newVideo)
+                usersCol.insert_one({"userid": authenticated_user, "videos": videosArr})
+                result = "Success"
         else:
-            return "Missing Parameter", 400
+            result = saveFile
+
+        return str(result), 200
     except Exception as e:
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
         return "Server Error", 500
 
 @app.route('/results', methods=['GET'])
+# @login_required
 def get_results():
     try:
-        query_params = helper_module.parse_query_params(request.query_string)
-        if ('userid' in query_params):
+        user = usersCol.find_one({"userid": "12334"})
+        videos = user['videos']
+        return jsonify(videos), 200
 
-            user = usersCol.find_one({"userid": query_params['userid']})
-            videos = user['videos']
-            return jsonify(videos), 200
-        else:
-            return "Missing Parameter", 400
     except Exception as e:
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
         return "Server Error", 500
 
 @app.route('/suspects', methods=['GET'])
+@login_required
 def get_suspects():
     try:
         findSuspects = suspectsCol.distinct("suspects.local")
@@ -135,11 +129,10 @@ def get_suspects():
         return "Server Error", 500
 
 @app.route('/suspects', methods=['POST'])
+@login_required
 def post_suspects():
     try:
-        query_params = helper_module.parse_query_params(request.query_string)
-        if (query_params != None and
-            'file' in request.files):
+        if ('file' in request.files):
 
             for file in request.files.getlist('file'):
 
@@ -163,7 +156,13 @@ def post_suspects():
                         result = suspectsCol.insert({"suspects": suspectsArr})
                 else: 
                     result = saveFile
-            
+
+            # AI execution
+            for suspectId in get_suspects_ids():
+                print(suspectId)
+                preparer.prepare(int(suspectId))
+            trainer.train()
+
             return str(result), 200
         else:
             return "Missing Parameter", 400
@@ -224,6 +223,11 @@ def get_suspects_ids():
     return result
         
 def delete_suspects():
-    for filename in os.listdir(SUSPECTS_UPLOAD_FOLDER):
+    try:
+        for filename in os.listdir(SUSPECTS_UPLOAD_FOLDER):
             sh.copy(SUSPECTS_UPLOAD_FOLDER + filename, DATABASE_UPLOAD_FOLDER + filename)
             os.remove(SUSPECTS_UPLOAD_FOLDER + filename)
+    except:
+        print('Creating suspects directory')
+        os.mkdir(os.path.join(currentDir, SUSPECTS_UPLOAD_FOLDER))
+    

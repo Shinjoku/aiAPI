@@ -2,6 +2,7 @@
 from pymongo import MongoClient
 import os
 
+authenticated_user = ""
 DATABASE = MongoClient()['DEV'] # DB_NAME
 DEBUG = True
 # client = MongoClient('localhost')

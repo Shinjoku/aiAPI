@@ -11,7 +11,7 @@ def train():
 
     # Retrieve faces images and the culprits id
     def getImageAndId():
-        imagePaths = [os.path.join('assets\\faces', f) for f in os.listdir('assets\\faces')]
+        imagePaths = [os.path.join('assets/faces', f) for f in os.listdir('assets/faces')]
         faces = []
         ids = []
 

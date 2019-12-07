@@ -5,13 +5,13 @@ import numpy as np
 def prepare(id):
     # .XML classifiers
 
-    faceClassifier = cv2.CascadeClassifier('facial_recognition\\app\\cascades\\haarcascade_frontalface_default.xml')
-    eyeClassifier = cv2.CascadeClassifier('facial_recognition\\app\\cascades\\haarcascade_eye.xml')
+    faceClassifier = cv2.CascadeClassifier('facial_recognition/app/cascades/haarcascade_frontalface_default.xml')
+    eyeClassifier = cv2.CascadeClassifier('facial_recognition/app/cascades/haarcascade_eye.xml')
 
     # Global Variables ( :/ ) 
     imageWidth, imageHeight = 220, 220
     imageCount = 1
-    imagePaths = [os.path.join('assets\\suspects', f) for f in os.listdir('assets\\suspects')]
+    imagePaths = [os.path.join('assets/suspects', f) for f in os.listdir('assets/suspects')]
 
     # Receive current suspect Id
     print('Suspect identifier: ', id)

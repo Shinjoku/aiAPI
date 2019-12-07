@@ -2,14 +2,20 @@ import cv2
 import time
 import math
 
+
+SCREENSHOTS_UPLOAD_FOLDER = "assets/screenshots/"
+
+"""
+    Recognizes the suspects that are in the database
+"""
 def recognize(filename):
 
-    videosBaseUrl = 'assets\\videos\\'
+    videosBaseUrl = 'assets/videos/'
     suspects = {}
 
     print('RECOGNIZER> The recognition has begun.')
     # Classifier, currently using frontal image only
-    faceClassifier = cv2.CascadeClassifier("facial_recognition\\app\\cascades\\haarcascade_frontalface_default.xml")
+    faceClassifier = cv2.CascadeClassifier("facial_recognition/app/cascades/haarcascade_frontalface_default.xml")
 
     # Reconizers, to use the other two, uncomment them and comment the ones left
 
@@ -61,18 +67,11 @@ def recognize(filename):
                 if faceId != -1:
                     cv2.rectangle(frame, (x, y), (x + l, y + a), (0, 0, 255), 2)
 
-                    if faceId == 1:
-                        suspectName = 'Breno'
-                    elif faceId == 2:
-                        suspectName = 'Catarina'
-                    elif faceId == 3:
-                        suspectName = 'Eduardo'
-                    elif faceId == 4:
-                        suspectName = 'Gabriela'
-                    elif faceId == 5:
-                        suspectName = 'Matheus'
+                    suspectsIds = get_suspects_dict()
+                    if faceId in suspectsIds:
+                        suspectName = suspectsIds[faceId]
                     else:
-                        suspectName = 'Gasparzinho'
+                        continue
 
                     elapsedMiliseconds = math.trunc((time.time() - initialTime) * 1000)
 
@@ -81,23 +80,31 @@ def recognize(filename):
                         miliseconds = suspect['miliseconds']
 
                         if(suspect['records'] < 3):
+                            suspectMoment = os.path.join(
+                                SCREENSHOTS_UPLOAD_FOLDER,
+                                '${faceId}.${filename}.png')
+                                
+                            cv2.imwrite(suspectMoment, frame)
+
                             miliseconds.append(elapsedMiliseconds)
                             suspects[suspectName] = {
                                 "miliseconds": miliseconds,
+                                "picture": suspectMoment,
                                 "records": suspect['records'] + 1
                             }
                     else:
                         suspects[suspectName] = {
                             "miliseconds": [elapsedMiliseconds],
+                            "picture": suspectMoment,
                             "records": 1
                         }
 
-                    cv2.putText(frame, suspectName, (x, y + (a + 30)), font, 2, (0, 0, 255))
-                    cv2.putText(frame, str(confidence), (x, y + (a + 50)), font, 1, (0, 0, 255))
+                    # cv2.putText(frame, suspectName, (x, y + (a + 30)), font, 2, (0, 0, 255))
+                    # cv2.putText(frame, str(confidence), (x, y + (a + 50)), font, 1, (0, 0, 255))
 
             # Display the resulting frame
-            cv2.resizeWindow('Frame', newVideoWidth, newVideoHeight)
-            cv2.imshow('Frame', frame)
+            # cv2.resizeWindow('Frame', newVideoWidth, newVideoHeight)
+            # cv2.imshow('Frame', frame)
 
             # Press Q on keyboard to exit
             if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -122,3 +129,18 @@ def recognize(filename):
     print('RECOGNIZER> Recognition executed successfully.')
 
     return videoResult
+
+"""
+    Retrieves all suspects and their respective ids
+"""
+def get_suspects_dict():
+    suspects = {}
+    for imgName in os.listdir(SUSPECTS_UPLOAD_FOLDER):
+        suspectInfos = imgName.split('.')
+        suspectId = suspectInfos[1]
+        suspectName = suspectInfos[0]
+
+        if(suspectId not in result):
+            result[suspectId] = suspectName
+    
+    return result

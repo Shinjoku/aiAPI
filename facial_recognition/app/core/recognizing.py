@@ -77,6 +77,7 @@ def recognize(filename):
 
                     if(suspectName in suspects):
                         suspect = suspects[suspectName]
+                        print("RECOGNIZER> Suspect found: ", suspectName)
                         miliseconds = suspect['miliseconds']
 
                         if(suspect['records'] < 3):
@@ -122,7 +123,6 @@ def recognize(filename):
     cv2.destroyAllWindows()
 
     videoResult = {
-        "video": filename,
         "suspects": suspects
     }
 

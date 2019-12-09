@@ -3,7 +3,7 @@ import time
 import math
 import os, sys
 
-BASE_FOLDER = '../app/static/assets/'
+BASE_FOLDER = 'app/static/assets/'
 VIDEOS_FOLDER = BASE_FOLDER + 'videos/'
 SCREENSHOTS_UPLOAD_FOLDER = BASE_FOLDER + 'screenshots/'
 SUSPECTS_UPLOAD_FOLDER =  BASE_FOLDER + 'suspects/'
@@ -36,7 +36,9 @@ def recognize(filename):
         font = cv2.FONT_HERSHEY_COMPLEX_SMALL
 
         # Video input
-        capturedVideo = cv2.VideoCapture(VIDEOS_FOLDER + filename)
+        video_path = VIDEOS_FOLDER + filename
+        print(video_path)
+        capturedVideo = cv2.VideoCapture(video_path)
 
         # Error Handling
         if not capturedVideo.isOpened():
@@ -90,7 +92,7 @@ def recognize(filename):
                             if(suspect['records'] < 3):
                                 suspectMoment = os.path.join(
                                     SCREENSHOTS_UPLOAD_FOLDER,
-                                    '%i.%s.%ipng' % ( faceId, filename, suspect['records'] + 1))
+                                    '%i.%s.%i.png' % ( faceId, filename, suspect['records'] + 1))
 
                                 cv2.imwrite(suspectMoment, frame)
 

@@ -2,7 +2,7 @@ import cv2
 import os
 import numpy as np
 
-BASE_FOLDER = '../app/static/assets/'
+BASE_FOLDER = 'app/static/assets/'
 FACES_FOLDER = BASE_FOLDER + 'faces/'
 SUSPECTS_FOLDER = BASE_FOLDER + 'suspects/'
 
@@ -19,7 +19,7 @@ def prepare(id):
     imagePaths = [os.path.join(SUSPECTS_FOLDER, f) for f in os.listdir(SUSPECTS_FOLDER)]
 
     # Receive current suspect Id
-    print('Suspect identifier: ', id)
+    print('RECOGNIZER> Suspect identifier: ', id)
 
     print("PREPARER> The preparation has begun.")
     # for each image path:

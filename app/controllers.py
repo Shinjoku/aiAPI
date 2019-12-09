@@ -26,7 +26,7 @@ print(currentDir)
 ALLOWED_EXTENSIONS = set(["mov", "jpg", "png", "mp4"])
 
 # Folder locations for uploads
-BASE_FOLDER = './static/assets/'
+BASE_FOLDER = 'app/static/assets/'
 DATABASE_UPLOAD_FOLDER = BASE_FOLDER + "database/"
 SUSPECTS_UPLOAD_FOLDER = BASE_FOLDER + 'suspects/'
 VIDEOS_UPLOAD_FOLDER = BASE_FOLDER + 'videos/'
@@ -54,12 +54,13 @@ def mainPage():
 def get_videos():
     try:
         userVideos = usersCol.distinct(
-            "results.local", {"userid": g.user})
+            "videos", {"userid": g.user})
         if (userVideos == None):
             result = "User not found!"
         else:
             result = userVideos
 
+        print(result)
         return jsonify(result), 200
 
     except Exception as e:
@@ -105,7 +106,6 @@ def post_video():
                 result = "Success"
         else:
             result = saveFile
-
         return jsonify({"message": result}), 200
     except Exception as e:
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
@@ -161,9 +161,9 @@ def post_suspect():
             }
 
             i = 0
+            print("nextId: ", nextId)
             for file in request.files.getlist('files'):
 
-                print("nextId: ", nextId)
                 fileExtension = file.filename.split('.')[-1]
                 standardizedFileName = '%s.%s.%i.%s' % (
                     suspectName, nextId, i, fileExtension)

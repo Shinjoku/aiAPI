@@ -2,7 +2,7 @@ import cv2
 import os, sys
 import numpy as np
 
-BASE_FOLDER = '../app/static/assets/'
+BASE_FOLDER = 'app/static/assets/'
 FACES_FOLDER = BASE_FOLDER + 'faces/'
 SUSPECTS_FOLDER = BASE_FOLDER + 'suspects/'
 

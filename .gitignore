@@ -7,8 +7,7 @@ __pycache__/
 assets/
 
 # Artificial Intelligence models
-EigenClassifier.yml
-LBPHClassifier.yml
+*.yml
 
 # C extensions
 *.so

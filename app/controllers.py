@@ -46,7 +46,8 @@ nextSuspectIdCol = db['nextSuspectId']
 
 @app.route('/', methods=['GET'])
 def mainPage():
-    return jsonify({"message": "I'm alive."})
+    print('acessou')
+    return send_from_directory('static', 'index.html')
 
 
 @app.route('/videos', methods=['GET'])
@@ -60,7 +61,6 @@ def get_videos():
         else:
             result = userVideos
 
-        print(result)
         return jsonify(result), 200
 
     except Exception as e:
@@ -89,6 +89,7 @@ def post_video():
         recognizationResult = recognizer.recognize(filename)
 
         newVideo["result"] = recognizationResult
+        newVideo["thumbnail"] = filename + '.png'
 
         if (saveFile == "Success"):
             if(storedUser != None):
@@ -204,8 +205,17 @@ def static_filepath(local, filename):
 def get_suspect_image(filename):
     try:
         print(filename)
-        path = static_filepath('database', filename)
-        return '<img src="' + path + '">'
+        return send_from_directory('static/assets/database', filename)
+    except Exception as e:
+        print(e, " at line ", sys.exc_info()[-1].tb_lineno)
+        return jsonify({"message": "This file doesn`t exist"}), 500
+
+
+@app.route('/files/thumbnails/<filename>', methods=['GET'])
+def get_thumbnail_image(filename):
+    try:
+        print(filename)
+        return send_from_directory('static/assets/thumbnails', filename)
     except Exception as e:
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
         return jsonify({"message": "This file doesn`t exist"}), 500
@@ -215,8 +225,7 @@ def get_suspect_image(filename):
 def get_screenshots_image(filename):
     try:
         print(filename)
-        path = static_filepath('screenshots', filename)
-        return '<img src="' + path + '">'
+        return send_from_directory('static/assets/screenshots', filename)
     except Exception as e:
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
         return jsonify({"message": "This file doesn`t exist"}), 500
@@ -226,14 +235,7 @@ def get_screenshots_image(filename):
 def get_suspect_video(filename):
     try:
         print(filename)
-        extension = filename.split('.')[-1]
-        path = static_filepath('videos', filename)
-        return (
-            ''' 
-            <video controls=controls>
-                <source src="''' + path + '''" type="video/''' + extension + '''">
-            </video> 
-        ''')
+        return send_from_directory('static/assets/videos', filename)
     except Exception as e:
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
         return jsonify({"message": "This file doesn`t exist"}), 500

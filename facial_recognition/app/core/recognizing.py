@@ -8,6 +8,7 @@ VIDEOS_FOLDER = BASE_FOLDER + 'videos/'
 SCREENSHOTS_UPLOAD_FOLDER = BASE_FOLDER + 'screenshots/'
 SUSPECTS_UPLOAD_FOLDER =  BASE_FOLDER + 'suspects/'
 DATABASE_UPLOAD_FOLDER =  BASE_FOLDER + 'database/'
+THUMBNAILS_FOLDER =  BASE_FOLDER + 'thumbnails/'
 
 """
     Recognizes the suspects that are in the database
@@ -15,7 +16,7 @@ DATABASE_UPLOAD_FOLDER =  BASE_FOLDER + 'database/'
 def recognize(filename):
     videoResult = {}
     try:
-        suspects = {}
+        suspects = []
 
         print('RECOGNIZER> The recognition has begun.')
         # Classifier, currently using frontal image only
@@ -37,7 +38,6 @@ def recognize(filename):
 
         # Video input
         video_path = VIDEOS_FOLDER + filename
-        print(video_path)
         capturedVideo = cv2.VideoCapture(video_path)
 
         # Error Handling
@@ -45,6 +45,7 @@ def recognize(filename):
             print("Error opening video stream or file")
 
         frameNumber = 0
+        takeThumbnail = True
         initialTime = time.time()
         # Read until video is completed
         while capturedVideo.isOpened():
@@ -58,6 +59,15 @@ def recognize(filename):
                 newVideoWidth = int(videoWidth / 2)
                 frame = cv2.resize(
                     frame, (int(newVideoWidth), int(newVideoHeight)))
+                
+                if takeThumbnail:
+                    thumbName = os.path.join(
+                        THUMBNAILS_FOLDER,
+                        '%s.png' % filename)
+
+                    cv2.imwrite(thumbName, frame)
+                    takeThumbnail = False
+
 
                 # Prepare frame
                 grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -68,8 +78,7 @@ def recognize(filename):
 
                 for (x, y, l, a) in detectedFaces:
                     # Resize face and predict who it is
-                    face = cv2.resize(
-                        grayFrame[y:y + a, x:x + l], (imageWidth, imageHeight))
+                    face = cv2.resize(grayFrame[y:y + a, x:x + l], (imageWidth, imageHeight))
                     faceId, confidence = recognizer.predict(face)
 
                     # If a known culprit its identified, compare its Id with database name
@@ -84,25 +93,34 @@ def recognize(filename):
                         elapsedMiliseconds = math.trunc(
                             (time.time() - initialTime) * 1000)
 
-                        if(suspectName in suspects):
-                            suspect = suspects[suspectName]
+                        foundSuspect = False
+                        for i, suspect in enumerate(suspects):
+
+                            if suspectName == suspect['name']:
+                                miliseconds = suspect['miliseconds']
+
+                                if(suspect['records'] < 3):
+                                    print("RECOGNIZER> Suspect found: ", suspectName)
+
+                                    suspectMoment = os.path.join(
+                                        SCREENSHOTS_UPLOAD_FOLDER,
+                                        '%i.%s.%i.png' % ( faceId, filename, suspect['records'] + 1))
+
+                                    cv2.imwrite(suspectMoment, frame)
+
+                                    miliseconds.append(elapsedMiliseconds)
+                                    suspects[i] = {
+                                        "name": suspectName,
+                                        "miliseconds": miliseconds,
+                                        "picture": suspectMoment,
+                                        "records": (suspect['records'] + 1)
+                                    }
+                                foundSuspect = True
+                                break
+
+                        if not foundSuspect:
                             print("RECOGNIZER> Suspect found: ", suspectName)
-                            miliseconds = suspect['miliseconds']
 
-                            if(suspect['records'] < 3):
-                                suspectMoment = os.path.join(
-                                    SCREENSHOTS_UPLOAD_FOLDER,
-                                    '%i.%s.%i.png' % ( faceId, filename, suspect['records'] + 1))
-
-                                cv2.imwrite(suspectMoment, frame)
-
-                                miliseconds.append(elapsedMiliseconds)
-                                suspects[suspectName] = {
-                                    "miliseconds": miliseconds,
-                                    "picture": suspectMoment,
-                                    "records": suspect['records'] + 1
-                                }
-                        else:
                             suspectMoment = os.path.join(
                                 SCREENSHOTS_UPLOAD_FOLDER,
                                 '%i.%s.1.png' % ( faceId, filename))
@@ -111,11 +129,12 @@ def recognize(filename):
                             miliseconds = []
                             miliseconds.append(elapsedMiliseconds)
 
-                            suspects[suspectName] = {
+                            suspects.append({
+                                "name": suspectName,
                                 "miliseconds": [elapsedMiliseconds],
                                 "picture": suspectMoment,
                                 "records": 1
-                            }
+                            })
 
             # Break the loop
             else:
@@ -150,5 +169,4 @@ def get_suspects_dict():
 
         if(suspectId not in result):
             result[suspectId] = suspectName
-
     return result

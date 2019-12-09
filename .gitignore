@@ -3,7 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Images folder
 assets/
+
+# Artificial Intelligence models
+EigenClassifier.yml
+LBPHClassifier.yml
 
 # C extensions
 *.so

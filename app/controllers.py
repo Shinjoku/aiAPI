@@ -6,9 +6,9 @@ import json
 import datetime
 import sys
 from bson.json_util import dumps
-from config import client, authenticated_user
+from config import client
 from app import app
-from flask import request, jsonify, send_file
+from flask import request, jsonify, send_file, g, send_from_directory, url_for
 from datetime import date
 from werkzeug.utils import secure_filename
 from random import randrange
@@ -26,10 +26,11 @@ print(currentDir)
 ALLOWED_EXTENSIONS = set(["mov", "jpg", "png", "mp4"])
 
 # Folder locations for uploads
-DATABASE_UPLOAD_FOLDER = "assets/database/"
-SUSPECTS_UPLOAD_FOLDER = "assets/suspects/"
-VIDEOS_UPLOAD_FOLDER = "assets/videos/"
-FACES_UPLOAD_FOLDER = "assets/faces/"
+BASE_FOLDER = './static/assets/'
+DATABASE_UPLOAD_FOLDER = BASE_FOLDER + "database/"
+SUSPECTS_UPLOAD_FOLDER = BASE_FOLDER + 'suspects/'
+VIDEOS_UPLOAD_FOLDER = BASE_FOLDER + 'videos/'
+FACES_UPLOAD_FOLDER = BASE_FOLDER + 'faces/'
 
 # Import the helpers module
 helper_module = imp.load_source('*', './app/helpers.py')
@@ -40,7 +41,7 @@ db = client['api']
 usersCol = db['users']
 suspectsCol = db['suspects']
 resultsCol = db['results']
-number_of_suspects = db['suspectsNo']
+nextSuspectIdCol = db['nextSuspectId']
 
 
 @app.route('/', methods=['GET'])
@@ -53,8 +54,7 @@ def mainPage():
 def get_videos():
     try:
         userVideos = usersCol.distinct(
-            "results.local", {"userid": authenticated_user})
-        print(authenticated_user)
+            "results.local", {"userid": g.user})
         if (userVideos == None):
             result = "User not found!"
         else:
@@ -68,14 +68,11 @@ def get_videos():
 
 
 @app.route('/video', methods=['POST'])
-# @login_required
+@login_required
 def post_video():
     try:
-        if 'user' not in request.form:
-            return "Unauthorized", 401
-
-        storedUser = usersCol.find_one({"userid": request.form['user']})
-        if 'files' not in request.files:
+        storedUser = usersCol.find_one({"userid": g.user})
+        if 'file' not in request.files:
             print('POST_VIDEO> ERROR: File not received')
             return {'message': 'missing file'}, 400
 
@@ -109,7 +106,7 @@ def post_video():
         else:
             result = saveFile
 
-        return str(result), 200
+        return jsonify({"message": result}), 200
     except Exception as e:
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
         return "Server Error", 500
@@ -143,59 +140,44 @@ def get_suspects():
         print(e)
         return "Server Error", 500
 
+
 @app.route('/suspect', methods=['POST'])
-# @login_required
+@login_required
 def post_suspect():
-    result="standard"
+    result = "standard"
 
     if 'user' not in request.form:
         return "Unauthorized", 401
     try:
-        print(request.files)
         if ('files' in request.files and 'suspectName' in request.form):
             suspectName = request.form['suspectName']
+            nextId = nextSuspectIdCol.find_one({})['nextId']
+
+            newSuspect = {
+                "suspectId": nextId,
+                "name": suspectName,
+                'local': [],
+                "timestamp": datetime.datetime.utcnow()
+            }
+
             i = 0
-                        
             for file in request.files.getlist('files'):
-                storedSuspect = suspectsCol.find_one({})
-                nextId = int(storedSuspect['newId'])
-                
+
                 print("nextId: ", nextId)
                 fileExtension = file.filename.split('.')[-1]
-                standardizedFileName = '%s.%s.%i.%s' %  (suspectName, nextId, i, fileExtension)
-                print("NOME RESULTANTE: ", standardizedFileName)
-                
-                newSuspect = {
-                    "name": suspectName,
-                    "suspectId": nextId,
-                    "local": standardizedFileName,
-                    "timestamp": datetime.datetime.utcnow()
-                }
+                standardizedFileName = '%s.%s.%i.%s' % (
+                    suspectName, nextId, i, fileExtension)
 
-                standardizedFileName
                 saveFile = upload_file(file, standardizedFileName, "image")
-                
-                if (saveFile == "Success"):
-                    if(storedSuspect != None):
-                        suspectsCol.update({"_id": storedSuspect['_id']},
-                            {
-                                "$push": {
-                                    "suspects": newSuspect
-                                },
-                                "$set": {
-                                    "newId": nextId + 1
-                                }
-                            },
-                            upsert=True)
-                        result = "Success"
-                    else:
-                        suspectsArr = []
-                        suspectsArr.append(newSuspect)
-                        suspectsCol.insert({"suspects": suspectsArr})
-                        suspectsCol.update({storedSuspect['_id']}, {"$set": {"newId": nextId + 1}})
-                        result = "Success"
-                else:
-                    return "Failed saving an image", 500
+                newSuspect['local'].append(standardizedFileName)
+                i = i + 1
+
+            if (saveFile == "Success"):
+                suspectsCol.insert_one(newSuspect)
+                nextSuspectIdCol.update({}, {"$set": {"nextId": nextId + 1}})
+                result = "Success"
+            else:
+                return "Failed saving an image", 500
 
             # AI execution
             for suspectId in get_suspects_ids():
@@ -209,6 +191,52 @@ def post_suspect():
     except Exception as e:
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
         return "Server Error", 500
+
+
+def static_filepath(local, filename):
+    staticFolder = os.path.join('/static', 'assets')
+    assetsFolder = os.path.join(staticFolder, local)
+    full_filename = os.path.join(assetsFolder, filename)
+    return full_filename
+
+
+@app.route('/files/suspects/<filename>', methods=['GET'])
+def get_suspect_image(filename):
+    try:
+        print(filename)
+        path = static_filepath('database', filename)
+        return '<img src="' + path + '">'
+    except Exception as e:
+        print(e, " at line ", sys.exc_info()[-1].tb_lineno)
+        return jsonify({"message": "This file doesn`t exist"}), 500
+
+
+@app.route('/files/screenshots/<filename>', methods=['GET'])
+def get_screenshots_image(filename):
+    try:
+        print(filename)
+        path = static_filepath('screenshots', filename)
+        return '<img src="' + path + '">'
+    except Exception as e:
+        print(e, " at line ", sys.exc_info()[-1].tb_lineno)
+        return jsonify({"message": "This file doesn`t exist"}), 500
+
+
+@app.route('/files/videos/<filename>', methods=['GET'])
+def get_suspect_video(filename):
+    try:
+        print(filename)
+        extension = filename.split('.')[-1]
+        path = static_filepath('videos', filename)
+        return (
+            ''' 
+            <video controls=controls>
+                <source src="''' + path + '''" type="video/''' + extension + '''">
+            </video> 
+        ''')
+    except Exception as e:
+        print(e, " at line ", sys.exc_info()[-1].tb_lineno)
+        return jsonify({"message": "This file doesn`t exist"}), 500
 
 
 @app.errorhandler(404)

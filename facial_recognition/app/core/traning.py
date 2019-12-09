@@ -2,6 +2,9 @@ import cv2
 import os, sys
 import numpy as np
 
+BASE_FOLDER = '../app/static/assets/'
+FACES_FOLDER = BASE_FOLDER + 'faces/'
+SUSPECTS_FOLDER = BASE_FOLDER + 'suspects/'
 
 def train():
     try:
@@ -13,8 +16,8 @@ def train():
 
         # Retrieve faces images and the culprits id
         def getImageAndId():
-            imagePaths = [os.path.join('assets/faces', f)
-                        for f in os.listdir('assets/faces')]
+            imagePaths = [os.path.join(FACES_FOLDER, f)
+                        for f in os.listdir(FACES_FOLDER)]
             faces = []
             ids = []
 

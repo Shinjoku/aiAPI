@@ -2,6 +2,11 @@ import cv2
 import os
 import numpy as np
 
+BASE_FOLDER = '../app/static/assets/'
+FACES_FOLDER = BASE_FOLDER + 'faces/'
+SUSPECTS_FOLDER = BASE_FOLDER + 'suspects/'
+
+
 def prepare(id):
     # .XML classifiers
 
@@ -11,7 +16,7 @@ def prepare(id):
     # Global Variables ( :/ ) 
     imageWidth, imageHeight = 220, 220
     imageCount = 1
-    imagePaths = [os.path.join('assets/suspects', f) for f in os.listdir('assets/suspects')]
+    imagePaths = [os.path.join(SUSPECTS_FOLDER, f) for f in os.listdir(SUSPECTS_FOLDER)]
 
     # Receive current suspect Id
     print('Suspect identifier: ', id)
@@ -34,7 +39,7 @@ def prepare(id):
             # if there were detected eyes, save the face image
             if len(detectedEyes):
                 faceImage = cv2.resize(grayImage[y:y + a, x:x + l], (imageWidth, imageHeight))
-                cv2.imwrite("assets/faces/suspect." + str(id) + "." + str(imageCount) + ".jpg", faceImage)
+                cv2.imwrite(FACES_FOLDER + "suspect." + str(id) + "." + str(imageCount) + ".jpg", faceImage)
                 
                 print("[ " + str(id) + " face " + str(imageCount) + " prepared ]")
                 

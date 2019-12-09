@@ -7,7 +7,8 @@ __pycache__/
 assets/
 
 # Artificial Intelligence models
-*.yml
+facial_recognition/EigenClassifier.yml
+facial_recognition/LBPHClassifier.yml
 
 # C extensions
 *.so

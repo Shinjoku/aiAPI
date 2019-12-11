@@ -41,12 +41,11 @@ db = client['api']
 usersCol = db['users']
 suspectsCol = db['suspects']
 resultsCol = db['results']
-nextSuspectIdCol = db['nextSuspectId']
+nextIdsCol = db['nextIds']
 
 
 @app.route('/', methods=['GET'])
 def mainPage():
-    print('acessou')
     return send_from_directory('static', 'index.html')
 
 
@@ -73,12 +72,15 @@ def get_videos():
 def post_video():
     try:
         storedUser = usersCol.find_one({"userid": g.user})
+        videoId = nextIdsCol.find_one({})['videoId']
+
         if 'file' not in request.files:
             print('POST_VIDEO> ERROR: File not received')
             return {'message': 'missing file'}, 400
 
         filename = request.files['file'].filename
         newVideo = {
+            "id": videoId,
             "title": filename,
             "local": str(os.path.join(VIDEOS_UPLOAD_FOLDER, filename)),
             "timestamp": datetime.datetime.utcnow()
@@ -105,6 +107,12 @@ def post_video():
                 usersCol.insert_one(
                     {"userid": request.form['user'], "videos": videosArr})
                 result = "Success"
+
+            nextIdsCol.update_one({}, {
+                "$set": {
+                    "videoId": videoId + 1
+                }
+            })
         else:
             result = saveFile
         return jsonify({"message": result}), 200
@@ -112,6 +120,24 @@ def post_video():
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
         return "Server Error", 500
 
+@app.route('/video/<id>', methods=['DELETE'])
+@login_required
+def delete_video(id):
+    videoId = int(id)
+    user = usersCol.find_one({"userid": g.user})
+    if(user is not None):
+        user['videos'] = [x for x in user['videos'] if x['id'] is not videoId]
+        print(user['videos'])
+        usersCol.update_one({"userid": g.user},
+        {
+            "$set": {
+                "videos": user['videos']
+            }
+        })
+
+        return jsonify({"message": "Success"}), 200
+    else:
+        return "Server Error", 500
 
 @app.route('/results', methods=['GET'])
 @login_required
@@ -152,7 +178,7 @@ def post_suspect():
     try:
         if ('files' in request.files and 'suspectName' in request.form):
             suspectName = request.form['suspectName']
-            nextId = nextSuspectIdCol.find_one({})['nextId']
+            nextId = nextIdsCol.find_one({})['suspectId']
 
             newSuspect = {
                 "suspectId": nextId,
@@ -175,7 +201,7 @@ def post_suspect():
 
             if (saveFile == "Success"):
                 suspectsCol.insert_one(newSuspect)
-                nextSuspectIdCol.update({}, {"$set": {"nextId": nextId + 1}})
+                nextIdsCol.update({}, {"$set": {"suspectId": nextId + 1}})
                 result = "Success"
             else:
                 return "Failed saving an image", 500
@@ -292,6 +318,7 @@ def upload_file(file, name, type):
 def get_suspects_ids():
     result = []
     for imgName in os.listdir(SUSPECTS_UPLOAD_FOLDER):
+        print(imgName)
         suspectId = imgName.split('.')[1]
         if(suspectId not in result):
             result.append(suspectId)

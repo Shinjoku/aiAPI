@@ -23,13 +23,7 @@ def recognize(filename):
         faceClassifier = cv2.CascadeClassifier(
             "facial_recognition/app/cascades/haarcascade_frontalface_default.xml")
 
-        # Reconizers, to use the other two, uncomment them and comment the ones left
-
-        #recognizer = cv2.face.FisherFaceRecognizer_create()
-        # recognizer.read("FisherClassifier.yml")
-        # recognizer = cv2.face.EigenFaceRecognizer_create()
-        # recognizer.read("EigenClassifier.yml")
-        recognizer = cv2.face.LBPHFaceRecognizer_create(radius=4, threshold=125)
+        recognizer = cv2.face.LBPHFaceRecognizer_create(radius=4, neighbors=8, threshold=125)
         recognizer.read("facial_recognition/LBPHClassifier.yml")
 
         imageWidth, imageHeight = 220, 220
@@ -39,26 +33,27 @@ def recognize(filename):
         # Video input
         video_path = VIDEOS_FOLDER + filename
         capturedVideo = cv2.VideoCapture(video_path)
-
+        numberOfFrames = capturedVideo.get(cv2.CAP_PROP_FRAME_COUNT)
+        print('RECOGNIZER> Number of frames: ', numberOfFrames)
         # Error Handling
         if not capturedVideo.isOpened():
-            print("Error opening video stream or file")
+            print("RECOGNIZER> Error opening video stream or file")
 
-        frameNumber = 0
         takeThumbnail = True
-        initialTime = time.time()
         # Read until video is completed
         while capturedVideo.isOpened():
+
             # Read video frame-by-frame
             videoReadSuccess, frame = capturedVideo.read()
 
             if videoReadSuccess:
+
                 # Redefine videos size, for it to fit in the notebooks screen
                 videoHeight, videoWidth, videoLayers = frame.shape
-                newVideoHeight = int(videoHeight / 2)
-                newVideoWidth = int(videoWidth / 2)
+                newVideoHeight = int(videoHeight / 4)
+                newVideoWidth = int(videoWidth / 4)
                 frame = cv2.resize(
-                    frame, (int(newVideoWidth), int(newVideoHeight)))
+                    frame, (newVideoWidth, newVideoHeight))
                 
                 if takeThumbnail:
                     thumbName = os.path.join(
@@ -74,7 +69,7 @@ def recognize(filename):
 
                 # Detect faces in frame
                 detectedFaces = faceClassifier.detectMultiScale(
-                    grayFrame, scaleFactor=1.5, minSize=(30, 30))
+                    grayFrame, scaleFactor=1.1, minSize=(30, 30))
 
                 for (x, y, l, a) in detectedFaces:
                     # Resize face and predict who it is
@@ -89,9 +84,7 @@ def recognize(filename):
                             suspectName = suspectsIds[faceId].replace('_', ' ')
                         else:
                             continue
-
-                        elapsedMiliseconds = math.trunc(
-                            (time.time() - initialTime) * 1000)
+                        elapsedMiliseconds = round(capturedVideo.get(cv2.CAP_PROP_POS_MSEC), 2)
 
                         foundSuspect = False
                         for i, suspect in enumerate(suspects):
@@ -100,19 +93,22 @@ def recognize(filename):
                                 miliseconds = suspect['miliseconds']
 
                                 if(suspect['records'] < 3):
-                                    print("RECOGNIZER> Suspect found: ", suspectName)
+                                    print("RECOGNIZER> Suspect found: ", suspectName, " with confidence of ", confidence)
 
+                                    suspectScreenshot = '%i.%s.%i.png' % ( faceId, filename, suspect['records'] + 1)
                                     suspectMoment = os.path.join(
                                         SCREENSHOTS_UPLOAD_FOLDER,
-                                        '%i.%s.%i.png' % ( faceId, filename, suspect['records'] + 1))
+                                        suspectScreenshot)
 
                                     cv2.imwrite(suspectMoment, frame)
+                                    newPictures = suspect['pictures']
+                                    newPictures.append(suspectScreenshot)
 
                                     miliseconds.append(elapsedMiliseconds)
                                     suspects[i] = {
                                         "name": suspectName.replace('_', ' '),
                                         "miliseconds": miliseconds,
-                                        "picture": suspectMoment,
+                                        "pictures": newPictures,
                                         "records": (suspect['records'] + 1)
                                     }
                                 foundSuspect = True
@@ -121,9 +117,10 @@ def recognize(filename):
                         if not foundSuspect:
                             print("RECOGNIZER> Suspect found: ", suspectName)
 
+                            suspectScreenshot = '%i.%s.1.png' % ( faceId, filename)
                             suspectMoment = os.path.join(
                                 SCREENSHOTS_UPLOAD_FOLDER,
-                                '%i.%s.1.png' % ( faceId, filename))
+                                suspectScreenshot)
 
                             cv2.imwrite(suspectMoment, frame)
                             miliseconds = []
@@ -132,12 +129,13 @@ def recognize(filename):
                             suspects.append({
                                 "name": suspectName,
                                 "miliseconds": [elapsedMiliseconds],
-                                "picture": suspectMoment,
+                                "pictures": [suspectScreenshot],
                                 "records": 1
                             })
 
             # Break the loop
             else:
+                print('RECOGNIZER> The video has ended')
                 break
 
         # When everything is done, release the video capture object

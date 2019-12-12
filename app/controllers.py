@@ -120,14 +120,26 @@ def post_video():
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
         return "Server Error", 500
 
-@app.route('/video/<id>', methods=['DELETE'])
+@app.route('/videos/<id>', methods=['GET'])
+@login_required
+def get_video(id):
+    videoId = int(id)
+    user = usersCol.find_one({"userid": g.user})
+    if(user is not None):
+        user['videos'] = [x for x in user['videos'] if x['id'] is videoId]
+
+        return jsonify(user['videos'][0]), 200
+    else:
+        return "Server Error", 500
+
+@app.route('/videos/<id>', methods=['DELETE'])
 @login_required
 def delete_video(id):
     videoId = int(id)
     user = usersCol.find_one({"userid": g.user})
     if(user is not None):
         user['videos'] = [x for x in user['videos'] if x['id'] is not videoId]
-        print(user['videos'])
+
         usersCol.update_one({"userid": g.user},
         {
             "$set": {
@@ -208,6 +220,7 @@ def post_suspect():
 
             # AI execution
             for suspectId in get_suspects_ids():
+                print('preparando: ', suspectId)
                 preparer.prepare(int(suspectId))
             trainer.train()
             delete_suspects()
@@ -230,7 +243,6 @@ def static_filepath(local, filename):
 @app.route('/files/suspects/<filename>', methods=['GET'])
 def get_suspect_image(filename):
     try:
-        print(filename)
         return send_from_directory('static/assets/database', filename)
     except Exception as e:
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
@@ -240,7 +252,6 @@ def get_suspect_image(filename):
 @app.route('/files/thumbnails/<filename>', methods=['GET'])
 def get_thumbnail_image(filename):
     try:
-        print(filename)
         return send_from_directory('static/assets/thumbnails', filename)
     except Exception as e:
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
@@ -250,7 +261,6 @@ def get_thumbnail_image(filename):
 @app.route('/files/screenshots/<filename>', methods=['GET'])
 def get_screenshots_image(filename):
     try:
-        print(filename)
         return send_from_directory('static/assets/screenshots', filename)
     except Exception as e:
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
@@ -260,7 +270,6 @@ def get_screenshots_image(filename):
 @app.route('/files/videos/<filename>', methods=['GET'])
 def get_suspect_video(filename):
     try:
-        print(filename)
         return send_from_directory('static/assets/videos', filename)
     except Exception as e:
         print(e, " at line ", sys.exc_info()[-1].tb_lineno)
@@ -322,7 +331,6 @@ def get_suspects_ids():
         suspectId = imgName.split('.')[1]
         if(suspectId not in result):
             result.append(suspectId)
-    print("IDS ENCONTRADOS: ", result)
     return result
 
 
@@ -332,9 +340,6 @@ def delete_suspects():
             sh.copy(SUSPECTS_UPLOAD_FOLDER + filename,
                     DATABASE_UPLOAD_FOLDER + filename)
             os.remove(SUSPECTS_UPLOAD_FOLDER + filename)
-
-        for filename in os.listdir(FACES_UPLOAD_FOLDER):
-            os.remove(FACES_UPLOAD_FOLDER + filename)
     except:
         print('Creating suspects directory')
         os.mkdir(os.path.join(currentDir, SUSPECTS_UPLOAD_FOLDER))

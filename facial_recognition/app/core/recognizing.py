@@ -86,7 +86,7 @@ def recognize(filename):
                     if faceId != -1:
                         suspectsIds = get_suspects_dict()
                         if faceId in suspectsIds:
-                            suspectName = suspectsIds[faceId]
+                            suspectName = suspectsIds[faceId].replace('_', ' ')
                         else:
                             continue
 
@@ -110,7 +110,7 @@ def recognize(filename):
 
                                     miliseconds.append(elapsedMiliseconds)
                                     suspects[i] = {
-                                        "name": suspectName,
+                                        "name": suspectName.replace('_', ' '),
                                         "miliseconds": miliseconds,
                                         "picture": suspectMoment,
                                         "records": (suspect['records'] + 1)
